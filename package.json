@@ -6,10 +6,10 @@
     "dev": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": ["rxjs", "ws", "twit"],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "This app is a interactive, realtime earthquake dashboard built with rxjs, twit and ws",
   "dependencies": {
     "rx-dom": "^7.0.3",
     "rxjs": "^7.8.1",
