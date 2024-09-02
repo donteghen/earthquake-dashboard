@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
+    <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>         
+    <script src="../node_modules/rxjs/dist/bundles/rxjs.umd.js" crossorigin="anonymous" defer></script>
+    <title>Earthquake Map</title> 
+    <style type="text/css">
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+        #map { height: 450px; width: 75%;}
+        #quakes_info_table {  
+            width:75%; margin-top: 16px; 
+            border-spacing: 0px !important; 
+            border-collapse: collapse;
+        }
+        #quakes_info {  width:75%;}
+        th, td {
+            border: 1px solid #96D4D4;                        
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <table id="quakes_info_table">
+        <thead>
+            <tr> 
+                <th>Location</th> 
+                <th>Magnitude</th> 
+                <th>Time</th>
+          </tr>
+        </thead>
+        <tbody id="quakes_info">
+        </tbody>
+      </table>
+    <script>
+
+        const QUAKE_URL = 'http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojsonp';
+
+        function loadJSONP(url) {
+            var script = document.createElement('script');
+            script.src = url;
+            script.crossOrigin = "anonymous";
+            var head = document.getElementsByTagName('head')[0];
+            head.appendChild(script);
+        }
+
+        var map = L.map('map').setView([33.858631, -118.279602], 7);
+        L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png').addTo(map);         
+    </script>
+    <script src="../index.js" defer></script> 
+</body>
+</html>
