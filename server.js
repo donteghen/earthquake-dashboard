@@ -1,4 +1,4 @@
-const WebSocketServer = require('ws').Server; 
+const {Server, WebSocket} = require('ws'); 
 
 const {fromEvent, merge, map} = require('rxjs');
 
@@ -8,38 +8,44 @@ envInit();
 
 
 
+const server = new Server({port:8080});
 
-
-const server = new WebSocketServer({port:8080});
-
-const onStatus = (msg) => {
-    console.log(msg);
+const onData = (data) => {    
+    if (data) {
+        return analyzeData(data)
+    }
+       
 }
 
 // Event for new client connections
-const connectionEvent = fromEvent(server, 'connection').pipe(
-    map(ws => {
-        // Log client connection
-        console.log('Client connected on localhost:8080');
-
-        // Handle incoming messages from this client
-        fromEvent(ws, 'message').subscribe(data => {
-            const message = data.toString(); // Convert data to string
-            onStatus( message );
+fromEvent(server, 'connection').pipe(
+    map(ws => {             
+        fromEvent(ws, 'message').pipe(
+            map(event => JSON.parse(event.data)),
+        ).subscribe((data) => {                      
+            const res = onData(data);
+            if (res.length > 0) {
+                ws[0].send(JSON.stringify(res), function(err) {
+                    if (err) {
+                        console.log('There was an error sending the message');
+                    } 
+                });
+            }
         });
 
         // Handle client disconnection
         fromEvent(ws, 'close').subscribe(() => {
             console.log('Client disconnected from localhost:8080');
         });
-
-        return 'Client connected on localhost:8080' ;
+        return ws;
     })
-);
-connectionEvent.subscribe(onStatus);
+).subscribe(() => {});
 
 
-
+function analyzeData ({quakes}) {
+    const highRightQuakes = quakes.filter(quake => quake.mag > 3) ;
+    return highRightQuakes;    
+}
 
  
 

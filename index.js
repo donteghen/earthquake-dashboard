@@ -2,7 +2,7 @@
 const {
     Observable, distinct, scan, retry, interval, startWith, of,  take,  takeWhile, takeLast, range, merge, mergeAll, mergeMap, 
     mergeScan, mergeWith, tap, takeUntil, fromEvent, filter, from, concat, first, reduce, EMPTY, pluck, share, bufferTime, identity,
-    distinctUntilChanged
+    distinctUntilChanged, bufferCount, concatMap
 } = rxjs;
 const {webSocket} = rxjs.webSocket;
 const mp = rxjs.map;
@@ -11,18 +11,20 @@ const mp = rxjs.map;
 
 const codeLayer = {};
 const quakeLayer = L.layerGroup([]).addTo(map);
+
 const table = document.getElementById('quakes_info');
+const listDiv = document.getElementById('risky_quakes_list');
 
 function initialize () {   
     const socket = webSocket('ws://127.0.0.1:8080');
     socket.subscribe({
-        next: message => {
-            console.log('Received from server:', message);
+        next: data => {
+            addToList(data)
         },
         error: e => {
             console.log('WebSocket error:', e);
             if (e.type === 'close') {
-                console.log('WebSocket closed!');
+                //console.log('WebSocket closed!'); ADD reconnection attempt logic
             }
         }
     });
@@ -49,7 +51,7 @@ function initialize () {
     const tableQuakes$ = quakes$.pipe(
         pluck('properties'),
         mp(makeRow),
-        bufferTime(500),
+        bufferTime(100),
         filter(bufferedRows => bufferedRows.length > 0),
         mp(bufferedRows => {
             const fragment = document.createDocumentFragment();
@@ -61,9 +63,9 @@ function initialize () {
     )
     //for sockets
     quakes$.pipe(
-        bufferTime(500)
-    ).subscribe(quakes => {
-        console.log('quakes.length', quakes.length)
+        bufferCount(5),
+        filter(bufferedRows => bufferedRows.length > 0),
+    ).subscribe(quakes => {        
         const quakeData = quakes.map(quake => {
             return {
                 id: quake.properties.net + quake.properties.code, 
@@ -71,8 +73,8 @@ function initialize () {
                 lng: quake.geometry.coordinates[0],
                 mag: quake.properties.mag
             }
-        });
-        socket.next(JSON.stringify({ quakes: quakeData }));
+        }); 
+        socket.next({ quakes: quakeData });
     })
 
     quakes$.subscribe({
@@ -84,7 +86,6 @@ function initialize () {
             codeLayer[quake.id] = quakeLayer.getLayerId(circle);
         }
     });
-
     
     tableQuakes$.subscribe({
         next: (fragment) => {                 
@@ -103,7 +104,6 @@ function initialize () {
     })
     
 }
-
 
 // helpers
 function isHovering (element) {
@@ -129,8 +129,31 @@ function makeRow(props) {
     return row; 
 }
 
-
-
-
+function addToList (data) {
+    if(data.length > 0) {
+        data.forEach(record => {
+            const div = document.createElement('div');
+            div.setAttribute('id', record.id);
+            div.style.display = 'flex';   
+            div.style.justifyContent = 'space-between';
+            div.style.border = '2px solid gray'; 
+            div.style.padding = '4px'
+            div.style.margin = '4px 0'
+            div.style.borderRadius = '4px';
+            div.style.cursor = 'pointer';
+                     
+            const {lat,lng, mag} = record;
+            Object.entries(record).filter(pair => pair[0] !== 'id').forEach( ([key, value]) => {
+                const spanItem = document.createElement('span');
+                spanItem.innerText = `${key} : ${value}`;
+                spanItem.style.width = '30%';
+                spanItem.style.textAlign = 'center'
+                div.appendChild(spanItem);
+            });
+            listDiv.appendChild(div);
+        })
+        
+    }
+}
 window.addEventListener('DOMContentLoaded', initialize);
 
