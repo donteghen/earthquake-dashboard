@@ -4,6 +4,7 @@ const {
     mergeScan, mergeWith, tap, takeUntil, fromEvent, filter, from, concat, first, reduce, EMPTY, pluck, share, bufferTime, identity,
     distinctUntilChanged
 } = rxjs;
+const {webSocket} = rxjs.webSocket;
 const mp = rxjs.map;
 
 
@@ -12,7 +13,19 @@ const codeLayer = {};
 const quakeLayer = L.layerGroup([]).addTo(map);
 const table = document.getElementById('quakes_info');
 
-function initialize () {    
+function initialize () {   
+    const socket = webSocket('ws://127.0.0.1:8080');
+    socket.subscribe({
+        next: message => {
+            console.log('Received from server:', message);
+        },
+        error: e => {
+            console.log('WebSocket error:', e);
+            if (e.type === 'close') {
+                console.log('WebSocket closed!');
+            }
+        }
+    });
     const quakes = new Observable(observer => { 
         window.eqfeed_callback = function(response) {
             const quakes = response.features; 
@@ -46,7 +59,22 @@ function initialize () {
             return fragment;
         })
     )
-        
+    //for sockets
+    quakes$.pipe(
+        bufferTime(500)
+    ).subscribe(quakes => {
+        console.log('quakes.length', quakes.length)
+        const quakeData = quakes.map(quake => {
+            return {
+                id: quake.properties.net + quake.properties.code, 
+                lat: quake.geometry.coordinates[1],
+                lng: quake.geometry.coordinates[0],
+                mag: quake.properties.mag
+            }
+        });
+        socket.next(JSON.stringify({ quakes: quakeData }));
+    })
+
     quakes$.subscribe({
         next: (quake) => {        
             const coords = quake.geometry.coordinates; 
@@ -56,6 +84,7 @@ function initialize () {
             codeLayer[quake.id] = quakeLayer.getLayerId(circle);
         }
     });
+
     
     tableQuakes$.subscribe({
         next: (fragment) => {                 
@@ -75,16 +104,7 @@ function initialize () {
     
 }
 
-function socketInit () {
-    var T = new Twit({
-        consumer_key: 'nWs58W51UTQ1U3u09qkspNaSs',
-        consumer_secret: 'Tt6TyFaXiv5GGs3fEVpJ4DWcLH7yDCHlXco3jakpgSRVLbLYV0', 
-        access_token: '1731555618161352704-ocWvs9BAykuqfUd5r8jVc8hSzPwZM5', 
-        access_token_secret: 'DwEdJnhVkZ5dtSaeDJ5CDUc8A3V7Eo8BnkViyQ3SIIhJg',
-        timeout_ms:           60*1000,  // optional HTTP request timeout to apply to all requests.
-        strictSSL:            false,
-    });
-}
+
 // helpers
 function isHovering (element) {
     const over = fromEvent(element, 'mouseover').pipe(mp(x => {        
